@@ -14,7 +14,7 @@ struct TESObjectCELL : TESForm
 
     uint8_t pad20[0x40 - 0x20];
     uint8_t cellFlags[5];
-    uint8_t pad45[0x88 - 0x45];
+    uint8_t pad45[0x90 - 0x45];
 
     struct ReferenceData
     {
@@ -70,6 +70,6 @@ struct TESObjectCELL : TESForm
 };
 
 static_assert(offsetof(TESObjectCELL, cellFlags) == 0x40);
-static_assert(offsetof(TESObjectCELL, refData) == 0x88);
-static_assert(offsetof(TESObjectCELL, worldspace) == 0x120);
-static_assert(offsetof(TESObjectCELL, loadedCellData) == 0x128);
+static_assert(offsetof(TESObjectCELL, refData) == 0x90);
+static_assert(offsetof(TESObjectCELL, worldspace) == 0x128);
+static_assert(offsetof(TESObjectCELL, loadedCellData) == 0x130);
