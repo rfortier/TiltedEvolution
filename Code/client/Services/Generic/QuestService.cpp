@@ -179,8 +179,7 @@ bool QuestService::IsNonSyncableQuest(TESQuest* apQuest)
 {
     // non story quests are "blocked" and not synced
     auto& stages = apQuest->stages;
-    return apQuest->type == TESQuest::Type::None // internal event
-           || apQuest->type == TESQuest::Type::Miscellaneous || stages.Empty();
+    return apQuest->type == TESQuest::Type::None || stages.Empty();
 }
 
 void QuestService::DebugDumpQuests()
