@@ -207,10 +207,8 @@ void DebugService::OnUpdate(const UpdateEvent& acUpdateEvent) noexcept
         {
             s_f8Pressed = true;
 
-            // m_world.GetOverlayService().Reload();
-            auto* pPlayer = PlayerCharacter::Get();
-            spdlog::info("{}", pPlayer->formID);
-            pPlayer->UnEquipAll();
+            PlaceActorInWorld();
+            m_actors[0]->SetMapMarker();
         }
     }
     else

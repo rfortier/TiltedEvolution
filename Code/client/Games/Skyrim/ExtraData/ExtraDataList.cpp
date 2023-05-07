@@ -138,9 +138,17 @@ void ExtraDataList::SetEnchantmentData(EnchantmentItem* apItem, uint16_t aCharge
     TiltedPhoques::ThisCall(setEnchantmentData, this, apItem, aCharge, aRemoveOnUnequip);
 }
 
+void ExtraDataList::SetMarkerData(MapMarkerData* apMarkerData) noexcept
+{
+    TP_THIS_FUNCTION(TSetMarkerData, void, ExtraDataList, MapMarkerData* apMarkerData);
+    POINTER_SKYRIMSE(TSetMarkerData, setMarkerData, 11607);
+    TiltedPhoques::ThisCall(setMarkerData, this, apMarkerData);
+}
+
 bool ExtraDataList::HasQuestObjectAlias() noexcept
 {
     TP_THIS_FUNCTION(THasQuestObjectAlias, bool, ExtraDataList);
     POINTER_SKYRIMSE(THasQuestObjectAlias, s_hasQuestObjectAlias, 12052);
     return TiltedPhoques::ThisCall(s_hasQuestObjectAlias, this);
 }
+

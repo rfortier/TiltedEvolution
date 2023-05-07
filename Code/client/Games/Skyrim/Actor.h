@@ -222,6 +222,7 @@ struct Actor : TESObjectREFR
     void SetNoBleedoutRecovery(bool aSet) noexcept;
     void SetPlayerRespawnMode(bool aSet = true) noexcept;
     void SetPlayerTeammate(bool aSet) noexcept;
+    void SetMapMarker() noexcept;
 
     // Actions
     void UnEquipAll() noexcept;

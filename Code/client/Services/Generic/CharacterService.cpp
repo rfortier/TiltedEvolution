@@ -477,6 +477,8 @@ void CharacterService::OnCharacterSpawn(const CharacterSpawnRequest& acMessage) 
     {
         pActor->SetIgnoreFriendlyHit(true);
         pActor->SetPlayerRespawnMode();
+        pActor->SetMapMarker();
+
         m_world.emplace_or_replace<PlayerComponent>(*entity, acMessage.PlayerId);
     }
 
@@ -1422,6 +1424,8 @@ Actor* CharacterService::CreateCharacterForEntity(entt::entity aEntity) const no
     {
         pActor->SetIgnoreFriendlyHit(true);
         pActor->SetPlayerRespawnMode();
+        pActor->SetMapMarker();
+
         m_world.emplace_or_replace<PlayerComponent>(aEntity, acMessage.PlayerId);
     }
 

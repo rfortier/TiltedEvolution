@@ -81,7 +81,7 @@ struct TESForm : BaseFormComponent
     virtual void sub_2B();
     virtual void sub_2C();
     virtual void sub_2D();
-    virtual const char* GetName() const noexcept;
+    virtual const char* GetName() const noexcept; // This isn't correct. It sometimes takes an argument. We got lucky so far I guess?
     virtual void CopyFrom(TESForm* apForm);
     virtual void sub_30();
     virtual void sub_31();

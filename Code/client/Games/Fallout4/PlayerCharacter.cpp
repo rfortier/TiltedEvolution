@@ -59,3 +59,13 @@ NiPoint3 PlayerCharacter::RespawnPlayer() noexcept
 
     return pos;
 }
+
+// TODO: ft
+void PlayerCharacter::SetWaypoint(NiPoint3* apPosition, TESWorldSpace* apWorldSpace) noexcept
+{
+}
+
+// TODO: ft
+void PlayerCharacter::RemoveWaypoint() noexcept
+{
+}

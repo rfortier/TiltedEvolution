@@ -17,6 +17,9 @@ struct PlayerCharacter : Actor
     void PayCrimeGoldToAllFactions() noexcept;
     NiPoint3 RespawnPlayer() noexcept;
 
+    void SetWaypoint(NiPoint3* apPosition, TESWorldSpace* apWorldSpace) noexcept;
+    void RemoveWaypoint() noexcept;
+
     struct Objective
     {
         uint64_t pad0;

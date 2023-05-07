@@ -6,6 +6,7 @@
 
 struct AlchemyItem;
 struct EnchantmentItem;
+struct MapMarkerData;
 
 struct ExtraDataList
 {
@@ -28,6 +29,7 @@ struct ExtraDataList
     void SetPoison(AlchemyItem* apItem, uint32_t aCount) noexcept;
     void SetHealth(float aHealth) noexcept;
     void SetEnchantmentData(EnchantmentItem* apItem, uint16_t aCharge, bool aRemoveOnUnequip) noexcept;
+    void SetMarkerData(MapMarkerData* apMarkerData) noexcept;
 
     [[nodiscard]] bool HasQuestObjectAlias() noexcept;
 
