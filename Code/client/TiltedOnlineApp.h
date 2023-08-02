@@ -33,9 +33,11 @@ protected:
     void UninstallHooks();
 
 private:
+#if 0
 #if (!IS_MASTER)
     CrashHandler m_crashHandler;
 #elif
     ScopedCrashHandler m_crashHandler;
+#endif
 #endif
 };
