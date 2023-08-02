@@ -9,7 +9,7 @@ namespace stubs
     // for causing crashes and incompatibility with ST
     const wchar_t* const kDllBlocklist[] = {
 #if defined(TARGET_ST)
-        L"EngineFixes.dll",          // Skyrim Engine Fixes, breaks our hooks
+        //L"EngineFixes.dll",          // Skyrim Engine Fixes, breaks our hooks
         L"SkyrimSoulsRE.dll",        // Our mod implements this with special handling
 #elif defined(TARGET_FT)
         L"FallSouls.dll",            // Our mod implements this with special handling
