@@ -25,6 +25,7 @@
 #include <Events/PreUpdateEvent.h>
 #include <Events/UpdateEvent.h>
 
+// MOD BEHAVIORS: add modded behaviors
 #include <ModCompat/BehaviorVar.h>   
 
 World::World()
@@ -57,6 +58,7 @@ World::World()
     ctx().emplace<KeybindService>(m_dispatcher, ctx().at<InputService>(), ctx().at<DebugService>());
 
     BehaviorVar::Get()->Init();
+    // MOD BEHAVIORS: add modded behaviors
 }
 
 World::~World() = default;
