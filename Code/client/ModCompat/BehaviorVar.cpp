@@ -61,9 +61,12 @@ const AnimationGraphDescriptor* BehaviorVar::Patch(BSAnimationGraphManager* apMa
     spdlog::info("Found match, behavior replacer signature {}", iter->signatureVar);
 
     // Build the set of BehaviorVar strings as sets (not vectors) to eliminate dups
-    TiltedPhoques::Set<uint32_t> boolVar;
-    TiltedPhoques::Set<uint32_t> floatVar;
-    TiltedPhoques::Set<uint32_t> intVar;
+    // Also, we want the set sorted, so these have to be std::set s. TiltedPhoques::Set
+    // uses a hash map instead of a sorted tree, and I don't want to have to figure
+    // out how to override that.
+    std::set<uint32_t> boolVar;
+    std::set<uint32_t> floatVar;
+    std::set<uint32_t> intVar;
 
     // If we can find the original behavior that is being modded, 
     // get the descriptor and seed the behavior vars with it. 
@@ -134,7 +137,7 @@ const AnimationGraphDescriptor* BehaviorVar::Patch(BSAnimationGraphManager* apMa
      spdlog::info("Now have {} intVar descriptors after searching {} BehaviorVar strings", intVar.size(),
                   iter->syncIntegerVar.size());
  
-    // Reshape the sets to vectors
+    // Reshape the (sorted, unique) sets to vectors
     TiltedPhoques::Vector<uint32_t> boolVector(boolVar.begin(), boolVar.end());
     TiltedPhoques::Vector<uint32_t> floatVector(floatVar.begin(), floatVar.end());
     TiltedPhoques::Vector<uint32_t> intVector(intVar.begin(), intVar.end());
@@ -341,64 +344,6 @@ void BehaviorVar::Init()
         {
             behaviorPool.push_back(*sig);
         }
-    }
-
-    // Replace loaded descriptors
-    // BehaviorVar::ReplaceDescriptors();
-}
-
-void BehaviorVar::ReplaceDescriptors()
-{
-    // Replace all in pool
-    for (const auto& sig : behaviorPool)
-    {
-        spdlog::info("Replacing behavior hash {} with {}", sig.orgHash, sig.newHash);
-
-        auto pDescriptor = AnimationGraphDescriptorManager::Get().GetDescriptor(sig.orgHash);
-
-        if (pDescriptor == nullptr)
-            continue;
-
-        // Remake the anim graph descriptor and insert new bools, floats, ints
-        TiltedPhoques::Vector<uint32_t> boolVar;
-        TiltedPhoques::Vector<uint32_t> floatVar;
-        TiltedPhoques::Vector<uint32_t> intVar;
-
-        for (auto var : pDescriptor->BooleanLookUpTable)
-        {
-            boolVar.push_back(var);
-        }
-
-        for (auto var : pDescriptor->FloatLookupTable)
-        {
-            floatVar.push_back(var);
-        }
-
-        for (auto var : pDescriptor->IntegerLookupTable)
-        {
-            intVar.push_back(var);
-        }
-
-        // TODO: Insert new bools, floats, ints
-#if 0
-        const AnimationGraphDescriptor* pGraph =
-            AnimationGraphDescriptorManager::Get().GetDescriptor(sig.orgHash);
-
-        BSAnimationGraphManager* apManager;
-        IAnimationGraphManagerHolder::GetBSAnimationGraph(&apManager);
-        auto dumpVar = apManager->DumpAnimationVariables(true);
-        //std::unordered_map<std::string, uint32_t> reverseMap;
-#endif
-
-        auto mDescriptor = new AnimationGraphDescriptor({0}, {0}, {0});
-        mDescriptor->BooleanLookUpTable = boolVar;
-        mDescriptor->FloatLookupTable = floatVar;
-        mDescriptor->IntegerLookupTable= intVar;
-
-        // Update the existing descriptor
-        AnimationGraphDescriptorManager::Get().Update(sig.orgHash, sig.newHash, *mDescriptor);
-
-        //AnimationGraphDescriptorManager::Get().UpdateKey(sig.orgHash, sig.newHash);
     }
 }
 
