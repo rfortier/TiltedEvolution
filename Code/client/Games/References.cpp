@@ -216,10 +216,7 @@ void TESObjectREFR::SaveAnimationVariables(AnimationVariables& aVariables) const
             // Modded behavior check if descriptor wasn't found
             extern const AnimationGraphDescriptor* BehaviorVarPatch(BSAnimationGraphManager * pManager, Actor * pActor);
             if (!pDescriptor)
-            {
-                std::lock_guard guard(mutex_lock);
                 pDescriptor = BehaviorVarPatch(pManager, pActor);
-            }
 
             if (!pDescriptor)
                 return;
@@ -344,10 +341,7 @@ void TESObjectREFR::LoadAnimationVariables(const AnimationVariables& aVariables)
             // Modded behavior check if descriptor wasn't found
             extern const AnimationGraphDescriptor* BehaviorVarPatch(BSAnimationGraphManager * pManager, Actor * pActor);
             if (!pDescriptor)
-            {
-                std::lock_guard guard(mutex_lock);
                 pDescriptor = BehaviorVarPatch(pManager, pActor);
-            }
 
             if (!pDescriptor)
                 return;
