@@ -19,7 +19,6 @@ struct BehaviorVar
     void ReplaceDescriptor(BSAnimationGraphManager* apManager, Actor* apActor);
 
     void Init();
-    void ReplaceDescriptors();
     void Debug();
 
   private:
