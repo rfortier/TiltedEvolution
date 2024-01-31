@@ -1,12 +1,10 @@
 
 #include <BSAnimationGraphManager.h>
 #include <Games/ActorExtension.h>
-
-#if 0
-#include<Havok / BShkbHkxDB.h>
-#endif
-
 #include <ModCompat/BehaviorVar.h>
+#include <mutex>
+
+std::mutex mutex_lock;
 
 BehaviorVar* BehaviorVar::single = nullptr;
 BehaviorVar* BehaviorVar::Get()
@@ -26,6 +24,9 @@ const AnimationGraphDescriptor* BehaviorVar::Patch(BSAnimationGraphManager* apMa
     // Make sure this isn't called so many times we need to filter out "never works" cases.
     invocations++;
     
+    // Serialize, Actors are multi-threaded
+    std::lock_guard guard(mutex_lock);
+
     // Check if the animation descriptor has already been built.
     uint32_t hexFormID = apActor->formID;
     auto pExtendedActor = apActor->GetExtension();
