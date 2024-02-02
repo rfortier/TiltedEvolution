@@ -43,6 +43,10 @@
 #include <Structs/Fallout4/AnimationGraphDescriptor_Master_Behavior.h>
 #endif
 
+#ifndef MODDED_BEHAVIOR
+extern const AnimationGraphDescriptor* BehaviorVarPatch(BSAnimationGraphManager* pManager, Actor* pActor);
+#endif
+
 using ScopedReferencesOverride = ScopedOverride<TESObjectREFR>;
 thread_local uint32_t ScopedReferencesOverride::s_refCount = 0;
 
@@ -213,10 +217,12 @@ void TESObjectREFR::SaveAnimationVariables(AnimationVariables& aVariables) const
 
             auto pDescriptor = AnimationGraphDescriptorManager::Get().GetDescriptor(pExtendedActor->GraphDescriptorHash);
 
+#ifndef MODDED_BEHAVIOR
             // Modded behavior check if descriptor wasn't found
             extern const AnimationGraphDescriptor* BehaviorVarPatch(BSAnimationGraphManager * pManager, Actor * pActor);
             if (!pDescriptor)
                 pDescriptor = BehaviorVarPatch(pManager, pActor);
+#endif
 
             if (!pDescriptor)
                 return;
@@ -338,10 +344,12 @@ void TESObjectREFR::LoadAnimationVariables(const AnimationVariables& aVariables)
 
             auto pDescriptor = AnimationGraphDescriptorManager::Get().GetDescriptor(pExtendedActor->GraphDescriptorHash);
 
+            
+#ifndef MODDED_BEHAVIOR
             // Modded behavior check if descriptor wasn't found
-            extern const AnimationGraphDescriptor* BehaviorVarPatch(BSAnimationGraphManager * pManager, Actor * pActor);
             if (!pDescriptor)
                 pDescriptor = BehaviorVarPatch(pManager, pActor);
+#endif
 
             if (!pDescriptor)
                 return;
