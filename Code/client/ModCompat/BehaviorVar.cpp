@@ -2,6 +2,13 @@
 #include <BSAnimationGraphManager.h>
 #include <Games/ActorExtension.h>
 #include <ModCompat/BehaviorVar.h>
+
+#if TP_SKYRIM64
+#include <Structs/Skyrim/AnimationGraphDescriptor_Master_Behavior.h>
+#include <Camera/TESCamera.h>       // Camera 1st person is only in Skyrim?
+#include <Camera/PlayerCamera.h>
+#endif
+
 #include <mutex>
 
 std::mutex mutex_lock;
@@ -32,6 +39,18 @@ const AnimationGraphDescriptor* BehaviorVar::Patch(BSAnimationGraphManager* apMa
     auto pExtendedActor = apActor->GetExtension();
     auto hash = pExtendedActor->GraphDescriptorHash;
     const AnimationGraphDescriptor* pGraph = AnimationGraphDescriptorManager::Get().GetDescriptor(hash);
+
+#if TP_SKYRIM64
+    // If it is the player-character AND they are in 1st person, we don't have the data to mod them;
+    // Used the base game animation graphs until a Master Behavior actor enters the room. Could be an NPC,
+    // but will always happen no later than when the 2nd person joins the server and room.
+    // Remote players are ALWAYS in 3rd person by definition
+    if (hexFormID == 0x14 && PlayerCamera::Get()->IsFirstPerson())
+    {
+        hash   = AnimationGraphDescriptor_Master_Behavior::m_key;
+        pGraph = AnimationGraphDescriptorManager::Get().GetDescriptor(hash);
+    }
+#endif
 
     // If we found the descriptor we're done.
     if (pGraph)
@@ -256,7 +275,7 @@ BehaviorVar::Replacer* BehaviorVar::loadReplacerFromDir(std::string aDir)
     // but that seems to be another thing a mod dev has no easy way to get their hands
     // on. So stripped off the need to provide the new hash, we'll just calculate it.
     // 
-    unsigned long long orgHash = 0;
+    uint64_t orgHash = 0;
     if (hashFile.size())
     {
         std::ifstream file(hashFile);
