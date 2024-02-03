@@ -1,4 +1,5 @@
 #pragma once
+#ifdef MODDED_BEHAVIOR_COMPATIBILITY
 
 #include <Structs/AnimationGraphDescriptorManager.h>
 
@@ -31,3 +32,5 @@ struct BehaviorVar
 };
 
 extern const AnimationGraphDescriptor* BehaviorVarPatch(BSAnimationGraphManager* apManager, Actor* apActor);
+
+#endif MODDED_BEHAVIOR_COMPATIBILITY

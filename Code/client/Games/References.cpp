@@ -43,9 +43,9 @@
 #include <Structs/Fallout4/AnimationGraphDescriptor_Master_Behavior.h>
 #endif
 
-#ifndef MODDED_BEHAVIOR
+#ifdef MODDED_BEHAVIOR_COMPATIBILITY
 extern const AnimationGraphDescriptor* BehaviorVarPatch(BSAnimationGraphManager* pManager, Actor* pActor);
-#endif
+#endif MODDED_BEHAVIOR_COMPATIBILITY
 
 using ScopedReferencesOverride = ScopedOverride<TESObjectREFR>;
 thread_local uint32_t ScopedReferencesOverride::s_refCount = 0;
@@ -217,12 +217,12 @@ void TESObjectREFR::SaveAnimationVariables(AnimationVariables& aVariables) const
 
             auto pDescriptor = AnimationGraphDescriptorManager::Get().GetDescriptor(pExtendedActor->GraphDescriptorHash);
 
-#ifndef MODDED_BEHAVIOR
+#ifdef MODDED_BEHAVIOR_COMPATIBILITY
             // Modded behavior check if descriptor wasn't found
             extern const AnimationGraphDescriptor* BehaviorVarPatch(BSAnimationGraphManager * pManager, Actor * pActor);
             if (!pDescriptor)
                 pDescriptor = BehaviorVarPatch(pManager, pActor);
-#endif
+#endif MODDED_BEHAVIOR_COMPATIBILITY
 
             if (!pDescriptor)
                 return;
@@ -344,12 +344,11 @@ void TESObjectREFR::LoadAnimationVariables(const AnimationVariables& aVariables)
 
             auto pDescriptor = AnimationGraphDescriptorManager::Get().GetDescriptor(pExtendedActor->GraphDescriptorHash);
 
-            
-#ifndef MODDED_BEHAVIOR
+#ifdef MODDED_BEHAVIOR_COMPATIBILITY
             // Modded behavior check if descriptor wasn't found
             if (!pDescriptor)
                 pDescriptor = BehaviorVarPatch(pManager, pActor);
-#endif
+#endif MODDED_BEHAVIOR_COMPATIBILITY
 
             if (!pDescriptor)
                 return;

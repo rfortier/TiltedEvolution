@@ -1,4 +1,6 @@
 
+#ifdef MODDED_BEHAVIOR_COMPATIBILITY
+
 #include <BSAnimationGraphManager.h>
 #include <Games/ActorExtension.h>
 #include <ModCompat/BehaviorVar.h>
@@ -404,3 +406,5 @@ void BehaviorVar::Debug()
         }
     }
 }
+
+#endif MODDED_BEHAVIOR_COMPATIBILITY
