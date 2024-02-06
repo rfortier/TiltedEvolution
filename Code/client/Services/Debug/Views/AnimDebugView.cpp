@@ -84,13 +84,13 @@ void DebugService::DrawAnimDebugView()
         return;
     }
 
- #ifdef MODDED_BEHAVIOR_COMPATIBILITY
-    if (ImGui::Button("Show cached hash"))
+     if (ImGui::Button("Show cached hash"))
     {
         spdlog::info("{}", pActor->GetExtension()->GraphDescriptorHash);
+#ifdef MODDED_BEHAVIOR_COMPATIBILITY
         BehaviorVar::Get()->Debug();
-    }
-#endif MODDED_BEHAVIOR_COMPATIBILITY
+#endif MODDED_BEHAVIOR_COMPATIBILITY 
+     }
 
     if (ImGui::Button("Clear all"))
     {
