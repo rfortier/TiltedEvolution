@@ -12,8 +12,12 @@
 #endif
 
 #include <mutex>
-
 std::mutex mutex_lock;
+
+// How long we failList a behavior hash that can't be translated.
+// See explanation in BehaviorVar::Patch
+using namespace std::literals;
+const std::chrono::steady_clock::duration FAILLIST_DURATION(5min);
 
 BehaviorVar* BehaviorVar::single = nullptr;
 BehaviorVar* BehaviorVar::Get()
@@ -57,6 +61,20 @@ const AnimationGraphDescriptor* BehaviorVar::Patch(BSAnimationGraphManager* apMa
     if (pGraph)
         return pGraph;
     
+    // If BehaviorVar replacement fails, the hash is failListed for a period of time.
+    // This handles a number of special cases for us. Many behaviors are not synced; the
+    // game just ignores them and let's the multiple clients each handle it.
+    // Examples are the "Root" behavior (not synced as a behavior, but handled),
+    // or any number of lower-priority actors such as Wisps (location is always synced,
+    // but otherwise behavior sync not needed).
+    //
+    // FailListed for minutes to avoid performance hit of constantly checking for
+    // modded behavior. Only failListed for minutes to occasionally get log messages
+    // so we can think about fixing it. Or the case of dynamic behavior and behavior
+    // signature changes that might work later (yes, mods like that exist)
+    if (failListed(hash))
+        return nullptr;
+
     // Up to here the routine is pretty cheap, and WILL be called a bunch of times
     // if the only humanoid Actor is the Dragonborn/player in 1st person.
     // With that case filtered out, keep a counter to see if we need to defend against other 
@@ -65,7 +83,6 @@ const AnimationGraphDescriptor* BehaviorVar::Patch(BSAnimationGraphManager* apMa
         spdlog::warn("BehaviorVar::Patch: warning, more than 100 invocations, investigate why");
  
     spdlog::info("BehaviorVar::Patch: actor with formID {:x} with hash of {} has modded behavior", hexFormID, hash);
-
 
     // Get all animation variables for this actor, then create a reversemap to go from strings to aniamation enum.
     auto pDumpVar = apManager->DumpAnimationVariables(false);
@@ -84,7 +101,8 @@ const AnimationGraphDescriptor* BehaviorVar::Patch(BSAnimationGraphManager* apMa
             break;
     if (iter >= behaviorPool.end())
     {
-        spdlog::info("No replacer found");
+        spdlog::warn("No replacer found for behavior hash {:x} (found on formID {:x}), adding to fail list", hash, hexFormID);
+        failList(hash);
         return nullptr;
     }
     spdlog::info("Found match, behavior replacer signature {}", iter->signatureVar);
@@ -174,6 +192,8 @@ const AnimationGraphDescriptor* BehaviorVar::Patch(BSAnimationGraphManager* apMa
         spdlog::error("Too many {} behavior vars to sync for actor, max is 64.", msgString);
         spdlog::error("Actor with formID {:x}, signature {}, original hash {} cannot be synced", 
                       hexFormID, iter->orgHash, iter->signatureVar);
+        spdlog::error("Fail listing behavior hash {:x} found on formID {:x}", hash, hexFormID);
+        failList(hash);
         return nullptr;
     }
       
@@ -194,6 +214,19 @@ const AnimationGraphDescriptor* BehaviorVar::Patch(BSAnimationGraphManager* apMa
     // Add the new graph to the known behavior graphs
     new AnimationGraphDescriptorManager::Builder(AnimationGraphDescriptorManager::Get(), hash, *panimGraphDescriptor);
     return AnimationGraphDescriptorManager::Get().GetDescriptor(hash);
+}
+
+// Check if the behavior hash is on the failed liist
+boolean BehaviorVar::failListed(uint64_t hash)
+{
+    auto iter = failedBehaviors.find(hash);
+    return iter != failedBehaviors.end() && std::chrono::steady_clock::now() < iter->second;
+}
+
+//Place the behavior hash on the failed list
+void BehaviorVar::failList(uint64_t hash)
+{
+    failedBehaviors.insert_or_assign(hash, std::chrono::steady_clock::now() + FAILLIST_DURATION);
 }
 
 bool dirExists(std::string aPath)
@@ -236,37 +269,37 @@ BehaviorVar::Replacer* BehaviorVar::loadReplacerFromDir(std::string aDir)
         std::string path = p.path().string();
         std::string base_filename = path.substr(path.find_last_of("/\\") + 1);
 
-        spdlog::info("base_path: {}", base_filename);
+        spdlog::debug("base_path: {}", base_filename);
 
         if (base_filename.find("__sig.txt") != std::string::npos)
         {
             signatureFile = path;
 
-            spdlog::info("signature variable file: {}", signatureFile);
+            spdlog::debug("signature variable file: {}", signatureFile);
         }
         else if (base_filename.find("__hash.txt") != std::string::npos)
         {
             hashFile = path;
 
-            spdlog::info("hash file: {}", hashFile);
+            spdlog::debug("hash file: {}", hashFile);
         }
         else if (base_filename.find("__float.txt") != std::string::npos)
         {
             floatVarsFile.push_back(path);
 
-            spdlog::info("float file: {}", path);
+            spdlog::debug("float file: {}", path);
         }
         else if (base_filename.find("__int.txt") != std::string::npos)
         {
             intVarsFile.push_back(path);
 
-            spdlog::info("int file: {}", path);
+            spdlog::debug("int file: {}", path);
         }
         else if (base_filename.find("__bool.txt") != std::string::npos)
         {
             boolVarsFile.push_back(path);
 
-            spdlog::info("bool file: {}", path);
+            spdlog::debug("bool file: {}", path);
         }
     }
 
@@ -290,7 +323,7 @@ BehaviorVar::Replacer* BehaviorVar::loadReplacerFromDir(std::string aDir)
     erase_if(sigVar, isspace); // removes any inadvertant whitespace
     if (sigVar.size() == 0)
         return nullptr;
-    spdlog::info("Replacer found signature variable {}", sigVar);
+    spdlog::info("BehaviorVar::loadReplacerFromDir found signature variable {}", sigVar);
 
     // Check to see if there is a hash file. 
     // This is recommended, and shouild contain the ORIGINAL hash, 
