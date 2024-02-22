@@ -202,7 +202,6 @@ const AnimationGraphDescriptor* BehaviorVar::Patch(BSAnimationGraphManager* apMa
         seedAnimationVariables(iter->orgHash, pTmpGraph, reversemap, boolVar, floatVar, intVar); 
         spdlog::info("Original game descriptor with hash {} has {} boolean, {} float, {} integer behavior vars",
                      iter->orgHash, boolVar.size(), floatVar.size(), intVar.size());
-
     }
 
     // Check requested behavior vars for those that ARE legit
