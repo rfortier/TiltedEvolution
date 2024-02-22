@@ -1,9 +1,31 @@
 
+//
+// Core support for modified behavior (as in Nemesis or Pandora behavior modification or extension).
+//
+// One of the greatest features ensuring the longevity of Bethesda games is their support
+// for community modification, and many of the most popular mods also change the behavior 
+// of creatures. STR and FTR don't support mods as a matter of policy. And supporting
+// behavior mods is particularly difficult.
+// 
+// The game determines a set of behavior variables that must be synced and locks thatdown.
+// Changing the list is difficult, because behavior mods won't just add to the list, they
+// will change the order of the list also changing the shorthand numeric codes for behavior
+// vars to sync.
+//
+// So, supporting behavior mods means:
+//     1) We must be able the translate the built-in behavior var codes back to their string values.
+//     2) We must then retranslate the string values back to their (new) numeric values.
+//     3) We must add in the additional behavior variables requested by modders
+//     4) Finally, that will push us over some hard-coded limits, in particular
+//        a limit of 64 boolean vars that can be synced. Remove the limit.
+// 
 #ifdef MODDED_BEHAVIOR_COMPATIBILITY
 
+#include <immersive_launcher/launcher.h>
 #include <BSAnimationGraphManager.h>
 #include <Games/ActorExtension.h>
-#include <ModCompat/BehaviorVar.h>
+#include "BehaviorVar.h"
+#include "BehaviorVarsMap.h"
 
 #if TP_SKYRIM64
 #include <Structs/Skyrim/AnimationGraphDescriptor_Master_Behavior.h>
@@ -32,6 +54,61 @@ BehaviorVar* BehaviorVar::Get()
 const AnimationGraphDescriptor* BehaviorVarPatch(BSAnimationGraphManager* apManager, Actor* apActor)
 {
     return BehaviorVar::Get()->Patch(apManager, apActor);
+}
+
+//
+// Translate modded behavior numeric values.
+// When a behavior is modified (at least by Nemesis) it can rearrange the order of BehaviorVars.
+// Since their corresponding numeric value is based on the order, we have to translate the
+// BehaviorVars chosen (numerically) by the STR devs to their new numeric values.
+// We do this with a hack to translate old numeric value back to a string, then we
+// can forward-translate the string to its new numeric value.
+// 
+// The machine-generated table hack to do this can be removed with STR-devs
+// permission to also embed the string invformation in the Code\encoding\structs files.
+//
+void BehaviorVar::seedAnimationVariables(
+    uint64_t hash, 
+    const AnimationGraphDescriptor* pDescriptor,
+    std::map<const std::string, const uint32_t>& reversemap,
+    std::set<uint32_t>& boolVars, 
+    std::set<uint32_t>& floatVars,
+    std::set<uint32_t>& intVars)
+{
+    auto& origVars = BehaviorVarsMap::getInstance();
+
+    // Defensive code to detect if for some reason we have a number 
+    // without a string, or a string without a number.
+    for (auto& item : pDescriptor->BooleanLookUpTable)
+    {
+        auto strValue = origVars.find(hash, item);
+        if (strValue.empty())
+            spdlog::warn("BehaviorVar::seedAnimationVariables unable to find string for original BooleanVar {}", item);
+        else if (reversemap.find(strValue) == reversemap.end())
+            spdlog::warn("BehaviorVar::seedAnimationVariables unable to find BooleanVar {}", strValue);
+        else
+            boolVars.insert(reversemap[strValue]);
+    }
+    for (auto& item : pDescriptor->FloatLookupTable)
+    {
+        auto strValue = origVars.find(hash, item);
+        if (strValue.empty())
+            spdlog::warn("BehaviorVar::seedAnimationVariables unable to find string for original FloatVar {}", item);
+        else if (reversemap.find(strValue) == reversemap.end())
+            spdlog::warn("BehaviorVar::seedAnimationVariables unable to find FloatVar {}", strValue);
+        else
+            floatVars.insert(reversemap[strValue]);
+    }
+    for (auto& item : pDescriptor->IntegerLookupTable)
+    {
+        auto strValue = origVars.find(hash, item);
+        if (strValue.empty())
+            spdlog::warn("BehaviorVar::seedAnimationVariables unable to find string for original IntegerVar {}", item);
+        else if (reversemap.find(strValue) == reversemap.end())
+            spdlog::warn("BehaviorVar::seedAnimationVariables unable to find IntegerVar {}", strValue);
+        else
+            intVars.insert(reversemap[strValue]);
+    }
 }
 
 const AnimationGraphDescriptor* BehaviorVar::Patch(BSAnimationGraphManager* apManager, Actor* apActor)
@@ -84,13 +161,13 @@ const AnimationGraphDescriptor* BehaviorVar::Patch(BSAnimationGraphManager* apMa
  
     spdlog::info("BehaviorVar::Patch: actor with formID {:x} with hash of {} has modded behavior", hexFormID, hash);
 
-    // Get all animation variables for this actor, then create a reversemap to go from strings to aniamation enum.
+    // Get all animation variables for this actor, then create a reversemap to go from strings to animation enum.
     auto pDumpVar = apManager->DumpAnimationVariables(false);
     std::map<const std::string, const uint32_t> reversemap;
-    spdlog::debug("Known behavior variables for formID {:x}:", hexFormID);
+    spdlog::info("Known behavior variables for formID {:x}:", hexFormID);
     for (auto& item : pDumpVar)
     {
-        spdlog::debug("    {}:{}", item.first, item.second);
+        spdlog::info("    {}:{}", item.first, item.second);
         reversemap.insert({static_cast<const std::string>(item.second), item.first});
     }
 
@@ -105,7 +182,7 @@ const AnimationGraphDescriptor* BehaviorVar::Patch(BSAnimationGraphManager* apMa
         failList(hash);
         return nullptr;
     }
-    spdlog::info("Found match, behavior replacer signature {}", iter->signatureVar);
+    spdlog::info("Found match, behavior replacer {} signature {}", iter->creatureName, iter->signatureVar);
 
     // Build the set of BehaviorVar strings as sets (not vectors) to eliminate dups
     // Also, we want the set sorted, so these have to be std::sets. TiltedPhoques::Set
@@ -122,11 +199,10 @@ const AnimationGraphDescriptor* BehaviorVar::Patch(BSAnimationGraphManager* apMa
     const AnimationGraphDescriptor* pTmpGraph = nullptr;
     if (iter->orgHash && (pTmpGraph = AnimationGraphDescriptorManager::Get().GetDescriptor(iter->orgHash)))
     {
-        boolVar.insert(pTmpGraph->BooleanLookUpTable.begin(), pTmpGraph->BooleanLookUpTable.end());
-        floatVar.insert(pTmpGraph->FloatLookupTable.begin(), pTmpGraph->FloatLookupTable.end());
-        intVar.insert(pTmpGraph->IntegerLookupTable.begin(), pTmpGraph->IntegerLookupTable.end());
+        seedAnimationVariables(iter->orgHash, pTmpGraph, reversemap, boolVar, floatVar, intVar); 
         spdlog::info("Original game descriptor with hash {} has {} boolean, {} float, {} integer behavior vars",
                      iter->orgHash, boolVar.size(), floatVar.size(), intVar.size());
+
     }
 
     // Check requested behavior vars for those that ARE legit
@@ -177,6 +253,8 @@ const AnimationGraphDescriptor* BehaviorVar::Patch(BSAnimationGraphManager* apMa
     if (foundCount)
         spdlog::info("Now have {} intVar descriptors after searching {} BehavivorVar strings", intVar.size(), iter->syncIntegerVar.size());
 
+#if 0 // There are no limits, flex arrays now. Will come back and delete if it works.
+     
     // Ensure we aren't over the limits. If we are, we won't update
     // the animation. Performance will be terrible unless we kill some of the logging
     // or keep track of failed signatures.
@@ -196,7 +274,8 @@ const AnimationGraphDescriptor* BehaviorVar::Patch(BSAnimationGraphManager* apMa
         failList(hash);
         return nullptr;
     }
-      
+ #endif
+
     // Reshape the (sorted, unique) sets to vectors
     TiltedPhoques::Vector<uint32_t> boolVector(boolVar.begin(), boolVar.end());
     TiltedPhoques::Vector<uint32_t> floatVector(floatVar.begin(), floatVar.end());
@@ -229,21 +308,17 @@ void BehaviorVar::failList(uint64_t hash)
     failedBehaviors.insert_or_assign(hash, std::chrono::steady_clock::now() + FAILLIST_DURATION);
 }
 
-bool dirExists(std::string aPath)
+// Find all the subdirectories of behavior variables
+std::vector<std::filesystem::path> BehaviorVar::loadDirs(const std::filesystem::path& acPATH)
 {
-    return std::filesystem::is_directory(aPath);
-}
-
-std::vector<std::string> loadDirs(const std::string& acPATH)
-{
-    std::vector<std::string> result;
+    std::vector<std::filesystem::path> result;
     for (auto& p : std::filesystem::directory_iterator(acPATH))
         if (p.is_directory())
             result.push_back(p.path().string());
     return result;
 }
 
-BehaviorVar::Replacer* BehaviorVar::loadReplacerFromDir(std::string aDir)
+BehaviorVar::Replacer* BehaviorVar::loadReplacerFromDir(std::filesystem::path aDir)
 {
     // Enumerate all files in the directory and push bools, ints and floats 
     // to their respective vectors
@@ -312,6 +387,7 @@ BehaviorVar::Replacer* BehaviorVar::loadReplacerFromDir(std::string aDir)
 
     // Prepare reading files
     std::string sigVar;
+    std::string creatureName = aDir.filename().string();
     std::vector<std::string> floatVar;
     std::vector<std::string> intVar;
     std::vector<std::string> boolVar;
@@ -323,7 +399,7 @@ BehaviorVar::Replacer* BehaviorVar::loadReplacerFromDir(std::string aDir)
     erase_if(sigVar, isspace); // removes any inadvertant whitespace
     if (sigVar.size() == 0)
         return nullptr;
-    spdlog::info("BehaviorVar::loadReplacerFromDir found signature variable {}", sigVar);
+    spdlog::info("BehaviorVar::loadReplacerFromDir found {} with signature variable {}", creatureName, sigVar);
 
     // Check to see if there is a hash file. 
     // This is recommended, and shouild contain the ORIGINAL hash, 
@@ -345,13 +421,13 @@ BehaviorVar::Replacer* BehaviorVar::loadReplacerFromDir(std::string aDir)
         file.close();
         erase_if(tempString, isspace); // removes any inadvertant whitespace
         orgHash = std::strtoull(tempString.c_str(), nullptr, 10);
-        spdlog::info("Replacer specifies original hash {} for {}", orgHash, sigVar);
+        spdlog::info("Replacer specifies original hash {} for {}", orgHash, creatureName);
     }
 
     // Build lists of variables to sync
     // Read float behavior variables
     spdlog::debug("reading float var");
-    for (auto item : floatVarsFile)
+    for (auto& item : floatVarsFile)
     {
         std::ifstream file(item);
         while (std::getline(file, tempString))
@@ -365,7 +441,7 @@ BehaviorVar::Replacer* BehaviorVar::loadReplacerFromDir(std::string aDir)
 
     // Read integer behavior variables
     spdlog::debug("reading int vars");
-    for (auto item : intVarsFile)
+    for (auto& item : intVarsFile)
     {
         std::ifstream file(item);
         while (std::getline(file, tempString))
@@ -379,7 +455,7 @@ BehaviorVar::Replacer* BehaviorVar::loadReplacerFromDir(std::string aDir)
 
     // Read boolean behavior variables
     spdlog::debug("reading bool vars");
-    for (auto item : boolVarsFile)
+    for (auto& item : boolVarsFile)
     {
         std::ifstream file(item);
         while (std::getline(file, tempString))
@@ -396,6 +472,7 @@ BehaviorVar::Replacer* BehaviorVar::loadReplacerFromDir(std::string aDir)
 
     result->orgHash = orgHash;
     result->signatureVar   = sigVar;
+    result->creatureName   = creatureName;
     result->syncBooleanVar = boolVar;
     result->syncFloatVar   = floatVar;
     result->syncIntegerVar = intVar;
@@ -405,15 +482,19 @@ BehaviorVar::Replacer* BehaviorVar::loadReplacerFromDir(std::string aDir)
 
 void BehaviorVar::Init()
 {
+    // Initialize original (base STR) behaviors so we can search them.
+    BehaviorOrig::BehaviorOrigInit();
+    
     // Check if the behaviors folder exists
-    const std::string behaviorPath = TiltedPhoques::GetPath().string() + "/behaviors";
+    std::filesystem::path pBehaviorsPath;
+    pBehaviorsPath = launcher::GetLaunchContext()->gamePath / L"Data" / L"SkyrimTogetherRebornBehaviors";
 
-    if (!dirExists(behaviorPath))
+    if (!std::filesystem::is_directory(pBehaviorsPath))
         return;
 
-    std::vector<std::string> behaviorDirs = loadDirs(behaviorPath);
+    auto behaviorDirs = loadDirs(pBehaviorsPath);
 
-    for (auto dir : behaviorDirs)
+    for (auto& dir : behaviorDirs)
     {
         Replacer* sig = loadReplacerFromDir(dir);
         if (sig)
