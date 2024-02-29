@@ -178,11 +178,11 @@ const AnimationGraphDescriptor* BehaviorVar::Patch(BSAnimationGraphManager* apMa
             break;
     if (iter >= behaviorPool.end())
     {
-        spdlog::warn("No replacer found for behavior hash {:x} (found on formID {:x}), adding to fail list", hash, hexFormID);
+        spdlog::warn("No original behavior found for behavior hash {:x} (found on formID {:x}), adding to fail list", hash, hexFormID);
         failList(hash);
         return nullptr;
     }
-    spdlog::info("Found match, behavior replacer {} signature {}", iter->creatureName, iter->signatureVar);
+    spdlog::info("Found match, behavior hash {:x} (found on formID {:x}) has original behavior {} signature {}", hash, hexFormID, iter->creatureName, iter->signatureVar);
 
     // Build the set of BehaviorVar strings as sets (not vectors) to eliminate dups
     // Also, we want the set sorted, so these have to be std::sets. TiltedPhoques::Set
