@@ -159,7 +159,7 @@ const AnimationGraphDescriptor* BehaviorVar::Patch(BSAnimationGraphManager* apMa
     if (invocations++ == 100)
         spdlog::warn("BehaviorVar::Patch: warning, more than 100 invocations, investigate why");
  
-    spdlog::info("BehaviorVar::Patch: actor with formID {:x} with hash of {} has modded behavior", hexFormID, hash);
+    spdlog::info("BehaviorVar::Patch: actor with formID {:x} with hash of {} has modded (or not synced) behavior", hexFormID, hash);
 
     // Get all animation variables for this actor, then create a reversemap to go from strings to animation enum.
     auto pDumpVar = apManager->DumpAnimationVariables(false);
