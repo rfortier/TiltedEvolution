@@ -64,7 +64,7 @@ const AnimationGraphDescriptor* BehaviorVarPatch(BSAnimationGraphManager* apMana
 // We do this with a hack to translate old numeric value back to a string, then we
 // can forward-translate the string to its new numeric value.
 // 
-// The machine-generated table hack to do this can be removed with STR-devs
+// The machine-generated table hack to do this can be removed with STR-devs'
 // permission to also embed the string invformation in the Code\encoding\structs files.
 //
 void BehaviorVar::seedAnimationVariables(
@@ -109,6 +109,28 @@ void BehaviorVar::seedAnimationVariables(
         else
             intVars.insert(reversemap[strValue]);
     }
+}
+
+const std::vector<std::string> BehaviorVar::tokenizeBehaviorSig(const std::string signature) const
+{
+    // Syntax is [!]sig1[,!sig2]... Must be at least one. Each signature var possibly negated
+    // (meaning it MUST NOT be in the BehaviorVars of the actor). Separated by commas.
+    // Requires that whitespace has already been deleted (was, when file was read).
+    // Tokenize on ','
+    //
+    std::vector<std::string> retVal;
+    size_t commaPos;
+    size_t offset = 0;
+
+    do
+    {
+        commaPos = signature.find(',', offset);
+        retVal.push_back(signature.substr(offset, commaPos));
+        offset = commaPos + 1;
+
+    } while (commaPos != std::string::npos);
+
+    return retVal;
 }
 
 const AnimationGraphDescriptor* BehaviorVar::Patch(BSAnimationGraphManager* apManager, Actor* apActor)
@@ -171,18 +193,46 @@ const AnimationGraphDescriptor* BehaviorVar::Patch(BSAnimationGraphManager* apMa
         reversemap.insert({static_cast<const std::string>(item.second), item.first});
     }
 
-    // See if these animation variables include a signature variable for one of the replacers.
-    auto iter = behaviorPool.begin();
-    for (; iter < behaviorPool.end(); iter++)
-        if (reversemap.find(iter->signatureVar) != reversemap.end())
-            break;
-    if (iter >= behaviorPool.end())
+    // See if these animation variables include a signature for one of the replacers.
+    // Since some of the original behaviors don't have a single variable name that is completely
+    // unique, we allow a syntax of "!?signaturevar\(,!?signaturevar\)*". That is, an initial
+    // (possibly negated) signaturevar, followed by zero or more comma separated additional
+    // signaturevars (possibly negated).
+    //
+    // That's enough info to create a unique signature in the base game descriptors. At least,
+    // it was at the time of writing.
+    // 
+    // O(N) loop, but this typically only gets executed a few times (once for each modded
+    // creature TYPE, not each modded creature).
+    //
+    auto biter = behaviorPool.begin();
+    bool found = false;
+
+    for (; !found && biter < behaviorPool.end(); biter++)
+    {
+        auto tokens = tokenizeBehaviorSig(biter->signatureVar);
+        found = tokens.size() > 0;
+
+        for (auto titer = tokens.begin(); found && titer < tokens.end(); titer++)
+        {
+            bool negSig = titer->starts_with("!");
+       
+            if (negSig)
+                found = reversemap.find(titer->substr(1)) == reversemap.end();
+            else
+                found = reversemap.find(*titer) != reversemap.end();
+        }
+        if (found)
+            break;  // to prevent incrementing biter.
+    }
+
+    if (!found)
     {
         spdlog::warn("No original behavior found for behavior hash {:x} (found on formID {:x}), adding to fail list", hash, hexFormID);
         failList(hash);
         return nullptr;
     }
-    spdlog::info("Found match, behavior hash {:x} (found on formID {:x}) has original behavior {} signature {}", hash, hexFormID, iter->creatureName, iter->signatureVar);
+    spdlog::info("Found match, behavior hash {:x} (found on formID {:x}) has original behavior {} signature {}", hash, hexFormID, biter->creatureName, biter->signatureVar);
 
     // Build the set of BehaviorVar strings as sets (not vectors) to eliminate dups
     // Also, we want the set sorted, so these have to be std::sets. TiltedPhoques::Set
@@ -197,17 +247,17 @@ const AnimationGraphDescriptor* BehaviorVar::Patch(BSAnimationGraphManager* apMa
     // That way mod developers only need to know what vars their
     // mod adds, they don't have to know what the STR devs picked
     const AnimationGraphDescriptor* pTmpGraph = nullptr;
-    if (iter->orgHash && (pTmpGraph = AnimationGraphDescriptorManager::Get().GetDescriptor(iter->orgHash)))
+    if (biter->orgHash && (pTmpGraph = AnimationGraphDescriptorManager::Get().GetDescriptor(biter->orgHash)))
     {
-        seedAnimationVariables(iter->orgHash, pTmpGraph, reversemap, boolVar, floatVar, intVar); 
+        seedAnimationVariables(biter->orgHash, pTmpGraph, reversemap, boolVar, floatVar, intVar); 
         spdlog::info("Original game descriptor with hash {} has {} boolean, {} float, {} integer behavior vars",
-                     iter->orgHash, boolVar.size(), floatVar.size(), intVar.size());
+                     biter->orgHash, boolVar.size(), floatVar.size(), intVar.size());
     }
 
     // Check requested behavior vars for those that ARE legit
     // behavior vars for this Actor AND are not yet synced
     int foundCount = 0;
-    for (auto& item : iter->syncBooleanVar)
+    for (auto& item : biter->syncBooleanVar)
     {
         bool found = reversemap.find(item) != reversemap.end();
         if (found && boolVar.find(reversemap[item]) == boolVar.end())
@@ -220,10 +270,10 @@ const AnimationGraphDescriptor* BehaviorVar::Patch(BSAnimationGraphManager* apMa
  
     }
     if (foundCount)
-        spdlog::info("Now have {} boolVar descriptors after searching {} BehavivorVar strings", boolVar.size(), iter->syncBooleanVar.size());
+        spdlog::info("Now have {} boolVar descriptors after searching {} BehavivorVar strings", boolVar.size(), biter->syncBooleanVar.size());
 
     foundCount = 0;
-    for (auto& item : iter->syncFloatVar)
+    for (auto& item : biter->syncFloatVar)
     {
         bool found = reversemap.find(item) != reversemap.end();
         if (found && floatVar.find(reversemap[item]) == floatVar.end())
@@ -235,10 +285,10 @@ const AnimationGraphDescriptor* BehaviorVar::Patch(BSAnimationGraphManager* apMa
         }
     }
     if (foundCount)
-        spdlog::info("Now have {} floatVar descriptors after searching {} BehavivorVar strings", floatVar.size(), iter->syncFloatVar.size());
+        spdlog::info("Now have {} floatVar descriptors after searching {} BehavivorVar strings", floatVar.size(), biter->syncFloatVar.size());
 
     foundCount = 0;
-    for (auto& item : iter->syncIntegerVar)
+    for (auto& item : biter->syncIntegerVar)
     {
         bool found = reversemap.find(item) != reversemap.end();
         if (found && intVar.find(reversemap[item]) == intVar.end())
@@ -250,7 +300,7 @@ const AnimationGraphDescriptor* BehaviorVar::Patch(BSAnimationGraphManager* apMa
         }
     }
     if (foundCount)
-        spdlog::info("Now have {} intVar descriptors after searching {} BehavivorVar strings", intVar.size(), iter->syncIntegerVar.size());
+        spdlog::info("Now have {} intVar descriptors after searching {} BehavivorVar strings", intVar.size(), biter->syncIntegerVar.size());
 
 #if 0 // There are no limits, flex arrays now. Will come back and delete if it works.
      

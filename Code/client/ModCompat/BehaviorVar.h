@@ -36,6 +36,8 @@ struct BehaviorVar
     std::set<uint32_t>& floatVars,
     std::set<uint32_t>& intVars);
 
+    const std::vector<std::string> tokenizeBehaviorSig(const std::string signature) const;
+
     std::vector<std::filesystem::path> loadDirs(const std::filesystem::path& acPATH);
     Replacer* loadReplacerFromDir(std::filesystem::path aDir);
 
