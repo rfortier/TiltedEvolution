@@ -1,27 +1,37 @@
-# Tilted Online Nemesis
+# Skyrim Together Reborn for Modded Animations
 
-This fork is based on ragley's Nemesis fork of STR. Includes TDM, TUDM and dragon behavior patches.
+No permission to post any variation of this fork on Nexus. For now. It's coming, there are just more things to fix first so we don't get flooded with support requests.  
+
+# Credits
+This fork is inspired by Edho08's original brilliant effort to figure out how to patch Nemesis (and now Pandora) support into TiltedPhoques Skyrim Together Reborn. Since then, Spvvd and Ragley have put in a lot of maintainance effort. @rfortier and @MostExcellent have been working on this verison.
+
+# Status
+
+This version is a substantial rewrite, fixing a lot of bugs, adding flexibility that enables the STR development team and modders to work independently without breaking each other (as much). It has been ported to v1.6.3-preview of Skyrim Together Reborn.
+
+Includes TDM, TUDM and dragon behavior patches.
 
 Sometimes animations still don't sync, restarting game+server or rerunning Nemesis and syncing the output with your friends can fix it in most cases.
 
 Works only with Skyrim Version 1.6.640.0 and you can only join servers running this build of STR. It might work with the latest Skyrim and the correct address library, but it has barely been tested.
 And the STR team has not released 1.6.x yet.
 
-This is a continuation of Edho08's original work, later updated by Spvvd and Ragley. This version by RFortier addeds these goals:
+This version by added goals:
 * Pure feature branch to make it easily rebaseable. 
 * Minimal intrusion in the base code.
 * Feature is conditionally compiled. Enabled by a single commit in the history which will show the one line to change to turn it off. Or, don't include that commit.
 * Tries to remove as much of the complexity for modders as possible. To mod a behavior you don't need to know the new hashes of your modded behaviors, the game calculates them.
 That's pretty important because _every_ mod that changes behavior chanages the hash, and the order of mods may also change the hash. So a mod author can't know the new hash for the mods a user selects.
 * It's to your advantage to know the _original game behavior hash_ you are moddifying, though; if you do, you only need to list the behavior variables your mod needs, 
-the rest that the STR dev team selects will be picked up automatically for you. This helps give your mod STR version-independence.
+the rest that the STR dev team selects will be picked up automatically for you. This helps give your mod STR version-independence. For the already-built creatures, the mod already provides the original hash file.
 
 # TODO
-* Currently, unsquashed commits so people who want to look at it can see the progression, in particular why Edho08's original and Spvvd's reanim branch had to be merged 
+* Currently, unsquashed commits so people who want to look at it can see the progression, in particular why Edho08's original and Spvvd's reanim branch had to be merged and extended
 (that enables the "you only need to know what you added" feature above).
 * There's still more minimization to do.
 * Currently, BehaviorVar.cpp works, but it's blobby; when I get some time I'll simplify it.
 * Build up a fomod for a proper mod installer again, put a proper precompiled release up, and document the simplified behaviorvar support.
+* Well, that last one is actually staring to exist.
 
 
 # Tilted Online
