@@ -355,6 +355,19 @@ void Actor::SetActorInventory(const Inventory& aInventory) noexcept
     SetMagicEquipment(aInventory.CurrentMagicEquipment);
 }
 
+void Actor::ResetActorInventory() noexcept
+{
+    // Console trick to reset actor's inventory without interruption. 
+    // If this doesn't work will try other.
+#if false
+    if (!IsDead())
+        Resurrect(true);
+#else
+    Inventory localInventory = GetInventory();
+    SetActorInventory(localInventory);
+#endif
+}
+
 void Actor::SetMagicEquipment(const MagicEquipment& acEquipment) noexcept
 {
     auto* pEquipManager = EquipManager::Get();

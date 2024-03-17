@@ -237,6 +237,7 @@ void CharacterService::OnUpdate(const UpdateEvent& acUpdateEvent) noexcept
     RunFactionsUpdates();
     RunRemoteUpdates();
     RunExperienceUpdates();
+    RunClaimedDeadlines();
     ApplyCachedWeaponDraws(acUpdateEvent);
 }
 
@@ -1411,8 +1412,40 @@ ActorData CharacterService::BuildActorData(Actor* apActor) const noexcept
     return actorData;
 }
 
-void CharacterService::RunLocalUpdates() const noexcept
+void CharacterService::RunClaimedDeadlines() const noexcept
 {
+    if (!m_transport.IsConnected())
+        return;
+
+    using clock = std::chrono::steady_clock;
+    static clock::time_point lastCheckTimePoint = clock::now();
+    constexpr auto cMinDelayBetweenChecks= 5ms;
+
+    auto now = clock::now();
+    if (now - cMinDelayBetweenChecks < lastCheckTimePoint)
+        return;
+    lastCheckTimePoint = now;
+
+    auto view = m_world.view<FormIdComponent, LocalComponent>();
+
+    for (auto entity : view)
+    {
+        const auto& formIdComponent = view.get<FormIdComponent>(entity);
+        Actor* const pActor = Cast<Actor>(TESForm::GetById(formIdComponent.Id));
+        ActorExtension* pExtension = pActor->GetExtension();
+
+        if (   pExtension->IsLocal() 
+            && pExtension->ActorClaimedTimeout != RandomServices::NullTime() 
+            && now > pExtension->ActorClaimedTimeout)
+        {
+            pExtension->ActorClaimedTimeout = RandomServices::NullTime();
+            pActor->ResetActorInventory();
+        }
+   }
+}
+
+void CharacterService::RunLocalUpdates() const noexcept
+    {
     static std::chrono::steady_clock::time_point lastSendTimePoint;
     constexpr auto cDelayBetweenSnapshots = 100ms;
 

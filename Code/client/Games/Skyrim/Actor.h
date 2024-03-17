@@ -226,6 +226,7 @@ struct Actor : TESObjectREFR
     void SetPlayerTeammate(bool aSet) noexcept;
 
     // Actions
+    void ResetActorInventory() noexcept;
     void UnEquipAll() noexcept;
     void RemoveFromAllFactions() noexcept;
     void QueueUpdate() noexcept;
