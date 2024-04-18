@@ -5,6 +5,11 @@ No permission to post any variation of this fork on Nexus. For now. It's coming,
 # Credits
 This fork is inspired by Edho08's original effort to figure out how to patch Nemesis (and now Pandora) support into TiltedPhoques Skyrim Together Reborn. Since then, Spvvd and Ragley have put in a lot of maintainance effort. @rfortier and @MostExcellent have been working on this verison.
 
+# Latest News
+* This build backs out the preliminary version of Naked NPC Fix, and rebases onto /dev to pick up the final version of Naked NPC Fix as well as the other fixes on that branch.
+* During backout kept the RandomServices that can generate random time intervals as that might be useful later. Also kept all the extra logging that was built to track down root
+cause of naked and sliding bugs, which seem to have to do with startup races in cell transition. That logging will be removed or demoted to debug when (if) the issue is found.
+
 # Status
 
 This version is a substantial rewrite, fixing a lot of bugs, adding flexibility that enables the STR development team and modders to work independently without breaking each other (as much). It has been ported to v1.6.3-preview of Skyrim Together Reborn.
