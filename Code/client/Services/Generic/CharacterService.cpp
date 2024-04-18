@@ -120,6 +120,8 @@ void CharacterService::DeleteRemoteEntityComponents(entt::entity aEntity) const 
 
 bool CharacterService::TakeOwnership(const uint32_t acFormId, const uint32_t acServerId, const entt::entity acEntity) const noexcept
 {
+    spdlog::warn(__FUNCTION__ ": formID {:X} serverID {:X}", acFormId, acServerId);
+
     Actor* pActor = Cast<Actor>(TESForm::GetById(acFormId));
     if (!pActor)
     {
@@ -172,6 +174,8 @@ void CharacterService::DeleteTempActor(const uint32_t aFormId) noexcept
 
 void CharacterService::OnActorAdded(const ActorAddedEvent& acEvent) noexcept
 {
+    spdlog::warn(__FUNCTION__ ": formID {:X}", acEvent.FormId);
+
     Actor* pActor = Cast<Actor>(TESForm::GetById(acEvent.FormId));
 
     if (acEvent.FormId == 0x14)
@@ -207,6 +211,8 @@ void CharacterService::OnActorAdded(const ActorAddedEvent& acEvent) noexcept
 
 void CharacterService::OnActorRemoved(const ActorRemovedEvent& acEvent) noexcept
 {
+    spdlog::warn(__FUNCTION__ ": formID {:X}", acEvent.FormId);
+
     auto view = m_world.view<FormIdComponent>();
     const auto entityIt = std::find_if(view.begin(), view.end(), [view, formId = acEvent.FormId](auto aEntity) { return view.get<FormIdComponent>(aEntity).Id == formId; });
 
@@ -237,6 +243,7 @@ void CharacterService::OnUpdate(const UpdateEvent& acUpdateEvent) noexcept
     RunFactionsUpdates();
     RunRemoteUpdates();
     RunExperienceUpdates();
+    RunClaimedDeadlines();
     ApplyCachedWeaponDraws(acUpdateEvent);
 }
 
@@ -285,6 +292,8 @@ void CharacterService::OnDisconnected(const DisconnectedEvent& acDisconnectedEve
 
 void CharacterService::OnAssignCharacter(const AssignCharacterResponse& acMessage) noexcept
 {
+    spdlog::warn(__FUNCTION__ ": Cookie {:X} serverID {:X}", acMessage.Cookie, acMessage.ServerId);
+
     spdlog::info("Received for cookie {:X}, server id {:X}", acMessage.Cookie, acMessage.ServerId);
 
     auto view = m_world.view<WaitingForAssignmentComponent>();
@@ -354,6 +363,8 @@ void CharacterService::OnAssignCharacter(const AssignCharacterResponse& acMessag
 
 void CharacterService::OnCharacterSpawn(const CharacterSpawnRequest& acMessage) const noexcept
 {
+    spdlog::warn(__FUNCTION__ ": FormId {:X} ServerId {:X}", acMessage.FormId, acMessage.ServerId);
+
     auto remoteView = m_world.view<RemoteComponent>();
     const auto remoteItor = std::find_if(std::begin(remoteView), std::end(remoteView), [remoteView, Id = acMessage.ServerId](auto entity) { return remoteView.get<RemoteComponent>(entity).Id == Id; });
 
@@ -481,6 +492,8 @@ void CharacterService::OnCharacterSpawn(const CharacterSpawnRequest& acMessage) 
 
 void CharacterService::OnRemoteSpawnDataReceived(const NotifySpawnData& acMessage) noexcept
 {
+    spdlog::warn(__FUNCTION__ ": serverID {:X}", acMessage.Id);
+
     auto view = m_world.view<FormIdComponent>(entt::exclude<ObjectComponent>);
 
     const auto itor = std::find_if(
@@ -593,6 +606,8 @@ void CharacterService::OnFactionsChanges(const NotifyFactionsChanges& acEvent) c
 
 void CharacterService::OnOwnershipTransfer(const NotifyOwnershipTransfer& acMessage) const noexcept
 {
+    spdlog::warn(__FUNCTION__ ": ServerId {:X}", acMessage.ServerId);
+
     // TODO(cosideci): handle case if no one has it, therefore no RemoteComponent
     auto view = m_world.view<RemoteComponent, FormIdComponent>();
 
@@ -1112,6 +1127,7 @@ void CharacterService::RequestServerAssignment(const entt::entity aEntity) const
     auto* pActor = Cast<Actor>(TESForm::GetById(formIdComponent.Id));
     if (!pActor)
         return;
+    spdlog::warn(__FUNCTION__ ": formId {:X}", pActor->formID);
 
     TESNPC* pNpc = Cast<TESNPC>(pActor->baseForm);
     if (!pNpc)
@@ -1411,8 +1427,91 @@ ActorData CharacterService::BuildActorData(Actor* apActor) const noexcept
     return actorData;
 }
 
-void CharacterService::RunLocalUpdates() const noexcept
+// When we reach the deadline after ownership changes, see if 
+// NPC is clothed. For now, just report on it because the fix
+// is different depending on whether a local or remote NPC 
+// is naked.
+
+#pragma optimize("", off )
+void CharacterService::RunClaimedDeadlines() const noexcept
 {
+    if (!m_transport.IsConnected())
+        return;
+
+    using clock = std::chrono::steady_clock;
+    static clock::time_point lastCheckTimePoint = clock::now();
+    constexpr auto cMinDelayBetweenChecks= 5ms;
+
+    auto now = clock::now();
+    if (now > RandomServices::LatestDeadline() + 2s)
+        return;
+
+    if (now - cMinDelayBetweenChecks < lastCheckTimePoint)
+        return;
+    lastCheckTimePoint = now;
+
+    auto view = m_world.view<FormIdComponent, ActorValuesComponent>();
+    int32_t entities = 0, localActors = 0, remoteActors = 0, actors = 0;
+    for (auto entity : view)
+    {
+        entities++;
+
+        const auto& formIdComponent = view.get<FormIdComponent>(entity);
+        const auto& form = TESForm::GetById(formIdComponent.Id);
+        Actor* const pActor = Cast<Actor>(form);
+
+        if (pActor == nullptr)
+            continue;
+        actors++;
+        ActorExtension* pExtension;
+        TESNPC* pNpc;
+
+        if ((pExtension = pActor->GetExtension()) == nullptr)
+            continue;
+        if ((pNpc = Cast<TESNPC>(pActor->baseForm)) == nullptr)
+            continue;
+
+        // Actors that wear clothes always have a first outfit
+        // (at least until mods mess with them)
+        if (pNpc->outfits[0] == nullptr)
+            continue;
+
+        auto whereString = "local";
+        if (pExtension->IsLocal())
+            localActors++;
+        else
+            remoteActors++, whereString = "remote";
+
+        if (   !pExtension->ActorClaimedDeadline.has_value() // With an active Claimed deadline
+            || now <= pExtension->ActorClaimedDeadline)      // Which has timed out.
+            continue;
+        {
+            pExtension->ActorClaimedDeadline.reset();
+
+
+            if (pActor->GetEquipment().Entries.size())
+            {
+                spdlog::info(__FUNCTION__ ":{} NPC {} formID {:X} is clothed at claimed deadline",
+                             whereString, pNpc->fullName.value.AsAscii(), pActor->formID);
+
+                continue;
+            }
+
+            spdlog::critical(__FUNCTION__ ": {} NPC {} formID {:X} needs clothes at claimed deadline", whereString,
+                             pNpc->fullName.value.AsAscii(), pActor->formID);
+            std::optional<uint32_t> serverIdRes = Utils::GetServerId(entity);
+            if (!serverIdRes.has_value())
+            {
+                spdlog::error(__FUNCTION__ ": failed to find server id, target form id: {:X}", pActor->formID);
+                continue;
+            }
+        }
+    }
+//    spdlog::info(__FUNCTION__ ": iterated {} entities, {} actors, {} localActors, {} remoteActors", entities, actors, localActors, remoteActors);
+}
+
+void CharacterService::RunLocalUpdates() const noexcept
+    {
     static std::chrono::steady_clock::time_point lastSendTimePoint;
     constexpr auto cDelayBetweenSnapshots = 100ms;
 
