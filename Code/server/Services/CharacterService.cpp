@@ -84,15 +84,18 @@ void CharacterService::Serialize(World& aRegistry, entt::entity aEntity, Charact
 
     const auto* pFormIdComponent = aRegistry.try_get<FormIdComponent>(aEntity);
     if (pFormIdComponent)
-    {
         apSpawnRequest->FormId = pFormIdComponent->Id;
-    }
+    else
+        spdlog::warn(__FUNCTION__ ": no FormIdComponent for ServerId {:X} EntityId {:X}", 
+                     apSpawnRequest->ServerId, static_cast<std::underlying_type_t<entt::entity>>(aEntity));
 
     const auto* pInventoryComponent = aRegistry.try_get<InventoryComponent>(aEntity);
     if (pInventoryComponent)
-    {
         apSpawnRequest->InventoryContent = pInventoryComponent->Content;
-    }
+    else
+        spdlog::warn(__FUNCTION__ ": no InventoryCompnent for ServerId {:X} EntityId {:X}", 
+                     apSpawnRequest->ServerId, static_cast<std::underlying_type_t<entt::entity>>(aEntity));
+
 
     const auto* pActorValuesComponent = aRegistry.try_get<ActorValuesComponent>(aEntity);
     if (pActorValuesComponent)
