@@ -31,6 +31,8 @@ if has_config("unitybuild") then
 end
 
 add_defines("GLM_ENABLE_EXPERIMENTAL")
+-- Single-commit enable MODDED_BEHAVIOR_COMPATIBILITY
+add_defines("MODDED_BEHAVIOR_COMPATIBILITY")
 add_requires(
     "entt v3.10.0", 
     "recastnavigation v1.6.0", 
