@@ -1,7 +1,6 @@
 #include <TiltedOnlinePCH.h>
 
 #include <Games/ActorExtension.h>
-#include "RandomServices.h"
 
 bool ActorExtension::IsRemote() const noexcept
 {
@@ -30,13 +29,6 @@ bool ActorExtension::IsLocalPlayer() const noexcept
 
 void ActorExtension::SetRemote(bool aSet) noexcept
 {
-    // Related to cosideci TODO on CharacterService::TakeOwnership,
-    // fights over ownership can occur, with a resulting concurrency
-    // bug of NPCs not being equipped. After ownership is stable for a
-    // randomized duration, make sure they are equipped. Randomized
-    // to smooth out spawn / equip storms.
-    ActorClaimedDeadline = RandomServices::Get().RandomizedDeadline();
-
     if (aSet)
         onlineFlags |= kRemote;
     else
