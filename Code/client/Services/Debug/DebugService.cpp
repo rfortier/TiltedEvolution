@@ -169,7 +169,7 @@ void DebugService::OnUpdate(const UpdateEvent& acUpdateEvent) noexcept
         m_showDebugStuff = !m_showDebugStuff;
     }
 
-#if (!IS_MASTER)
+#if (!IS_MASTER && 0)
     if (GetAsyncKeyState(VK_F6))
     {
         if (!s_f6Pressed)
