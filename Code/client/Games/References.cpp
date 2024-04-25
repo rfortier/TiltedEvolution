@@ -872,9 +872,9 @@ void Actor::StopCombat() noexcept
     s_pStopCombat(this);
 }
 
-#if TP_SKYRIM64
 void Actor::RemoveSpell(MagicItem* apSpell) noexcept
 {
+#if TP_SKYRIM64
     TP_THIS_FUNCTION(TRemoveSpell, void, Actor, MagicItem*);
     POINTER_SKYRIMSE(TRemoveSpell, removeSpell, 38717);
     if (!apSpell)
@@ -884,8 +884,10 @@ void Actor::RemoveSpell(MagicItem* apSpell) noexcept
     }
     //spdlog::info("Removing spell: {} from actor: {}", apSpell->formID, formID);
     TiltedPhoques::ThisCall(removeSpell, this, apSpell);
-}
+#elif TP_FALLOUT4
+    // TODO ft, does it even have a RemoveSpell?
 #endif
+}
 bool Actor::HasPerk(uint32_t aPerkFormId) const noexcept
 {
     return GetPerkRank(aPerkFormId) != 0;
