@@ -81,7 +81,8 @@ void TiltedOnlineApp::Update()
     POINTER_SKYRIMSE(uint32_t, bUseFaceGenPreprocessedHeads, 378620);
     POINTER_FALLOUT4(uint32_t, bUseFaceGenPreprocessedHeads, 196397);
 
-    *bUseFaceGenPreprocessedHeads = 0;
+    // Reverting this change to respect the bUseFaceGenPreprocessedHeads flag.
+    //*bUseFaceGenPreprocessedHeads = 0;
 
     // Make sure the window stays active
     POINTER_SKYRIMSE(uint32_t, bAlwaysActive, 380768);
