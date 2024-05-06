@@ -79,7 +79,8 @@ void TiltedOnlineApp::Update()
     // Every frame make sure we won't use preprocessed facegen
     POINTER_SKYRIMSE(uint32_t, bUseFaceGenPreprocessedHeads, 378620);
 
-    *bUseFaceGenPreprocessedHeads = 0;
+    // Reverting this change to respect the bUseFaceGenPreprocessedHeads flag.
+    //*bUseFaceGenPreprocessedHeads = 0;
 
     // Make sure the window stays active
     POINTER_SKYRIMSE(uint32_t, bAlwaysActive, 380768);
