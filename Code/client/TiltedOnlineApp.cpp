@@ -74,6 +74,9 @@ void TiltedOnlineApp::Update()
 
     *bUseFaceGenPreprocessedHeads = 0;
 
+    // Belay that comment, USE preprocessed facegen
+    *bUseFaceGenPreprocessedHeads = 1;
+
     // Make sure the window stays active
     POINTER_SKYRIMSE(uint32_t, bAlwaysActive, 380768);
     POINTER_FALLOUT4(uint32_t, bAlwaysActive, 1420078);
