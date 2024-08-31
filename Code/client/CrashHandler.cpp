@@ -146,7 +146,6 @@ CrashHandler::~CrashHandler()
 
 void CrashHandler::RemovePreviousDump(std::filesystem::path path)
 {
-    return;
     for (auto& entry : std::filesystem::directory_iterator(path))
     {
         if (entry.path().string().find("crash") != std::string::npos)
