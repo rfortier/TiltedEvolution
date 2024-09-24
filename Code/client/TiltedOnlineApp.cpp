@@ -121,16 +121,11 @@ void TiltedOnlineApp::UninstallHooks()
 
 void TiltedOnlineApp::ApplyNvidiaFix() noexcept
 {
-    D3D_FEATURE_LEVEL d3dFeatureLevelOut;
-    D3D_FEATURE_LEVEL d3dFeatureLevels[] = {
-            D3D_FEATURE_LEVEL_11_0,
-            D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_10_0, D3D_FEATURE_LEVEL_9_3,
-            D3D_FEATURE_LEVEL_9_2, D3D_FEATURE_LEVEL_9_1};
-
-    HRESULT hr = CreateEarlyDxDevice(&m_pDevice, d3dFeatureLevels, _countof(d3dFeatureLevels), &d3dFeatureLevelOut);
+    auto d3dFeatureLevel = D3D_FEATURE_LEVEL_11_0;
+    HRESULT hr = CreateEarlyDxDevice(m_pDevice, &d3dFeatureLevel);
     if (FAILED(hr))
         spdlog::error("D3D11CreateDevice failed. Detected an NVIDIA GPU, error code={0:x}", hr);
 
-    if (d3dFeatureLevelOut < D3D_FEATURE_LEVEL_11_0)
+    if (d3dFeatureLevel < D3D_FEATURE_LEVEL_11_0)
         spdlog::warn("Unexpected D3D11 feature level detected (< 11.0), may cause issues");
 }
