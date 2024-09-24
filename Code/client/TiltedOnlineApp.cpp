@@ -7,7 +7,6 @@
 
 #include <World.h>
 
-#include <spdlog/spdlog.h>
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
@@ -18,7 +17,6 @@
 #include <Services/DiscordService.h>
 
 #include <ScriptExtender.h>
-#include <NvidiaUtil.h>
 
 using TiltedPhoques::Debug;
 
@@ -58,18 +56,12 @@ bool TiltedOnlineApp::BeginMain()
     World::Get().ctx().emplace<RenderSystemD3D11>(World::Get().ctx().at<OverlayService>(), World::Get().ctx().at<ImguiService>());
 
     LoadScriptExender();
-
-    if (IsNvidiaOverlayLoaded())
-        ApplyNvidiaFix();
-
     return true;
 }
 
 bool TiltedOnlineApp::EndMain()
 {
     UninstallHooks();
-    if (m_pDevice)
-        m_pDevice->Release();
 
     return true;
 }
@@ -117,15 +109,4 @@ void TiltedOnlineApp::InstallHooks2()
 
 void TiltedOnlineApp::UninstallHooks()
 {
-}
-
-void TiltedOnlineApp::ApplyNvidiaFix() noexcept
-{
-    auto d3dFeatureLevel = D3D_FEATURE_LEVEL_11_0;
-    HRESULT hr = CreateEarlyDxDevice(m_pDevice, &d3dFeatureLevel);
-    if (FAILED(hr))
-        spdlog::error("D3D11CreateDevice failed. Detected an NVIDIA GPU, error code={0:x}", hr);
-
-    if (d3dFeatureLevel < D3D_FEATURE_LEVEL_11_0)
-        spdlog::warn("Unexpected D3D11 feature level detected (< 11.0), may cause issues");
 }
