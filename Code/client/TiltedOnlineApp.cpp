@@ -118,6 +118,9 @@ void TiltedOnlineApp::UninstallHooks()
 
 void TiltedOnlineApp::ApplyNvidiaFix() noexcept
 {
+    // Turn this off for now because it breaks ENBs. Just disable nvidia overlay.
+    return;
+    
     D3D_FEATURE_LEVEL d3dFeatureLevelOut;
     HRESULT hr = CreateEarlyDxDevice(&m_pDevice, &d3dFeatureLevelOut);
     if (FAILED(hr))
