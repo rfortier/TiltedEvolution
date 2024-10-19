@@ -556,6 +556,8 @@ TESObjectCELL* TESWorldSpace::LoadCell(int32_t aXCoordinate, int32_t aYCoordinat
 
 GamePtr<Actor> Actor::Create(TESNPC* apBaseForm) noexcept
 {
+    spdlog::info(__FUNCTION__ ": creating actor, base formID {:X}, name \"{}\"", apBaseForm->formID, apBaseForm->fullName.value);
+
     auto pActor = New();
     // Prevent saving
     pActor->SetSkipSaveFlag(true);
@@ -587,7 +589,6 @@ GamePtr<Actor> Actor::Create(TESNPC* apBaseForm) noexcept
 #endif
 
     pActor->flags &= 0xFFDFFFFF;
-
     return pActor;
 }
 

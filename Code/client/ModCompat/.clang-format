@@ -1,0 +1,24 @@
+---
+BasedOnStyle: LLVM
+AccessModifierOffset: -4
+AlignAfterOpenBracket: AlwaysBreak
+BinPackArguments: false
+BinPackParameters: false
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AlignEscapedNewlines: Left
+AlignOperands: true
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: InlineOnly
+AllowShortLambdasOnASingleLine: Inline
+BraceWrapping:
+  AfterCaseLabel: true
+  IndentBraces: true
+BreakBeforeBraces: Allman
+BreakConstructorInitializers: BeforeComma
+ColumnLimit: 180
+IndentWidth: 4
+PenaltyReturnTypeOnItsOwnLine: 300
+PenaltyBreakFirstLessLess: 300
+PointerAlignment: Left
+SortIncludes: false
