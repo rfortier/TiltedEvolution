@@ -389,6 +389,21 @@ void CharacterService::OnCharacterSpawn(const CharacterSpawnRequest& acMessage) 
         else
         {
             // Players and npcs with temporary ref ids and base ids (usually random events)
+            // Make sure only 1 copy of remote player in flight, though
+            if (acMessage.IsPlayer)
+            {
+                const uint32_t cPlayerId = acMessage.PlayerId;
+                auto waitingView = m_world.view<WaitingForAssignmentComponent, PlayerComponent>();
+                const auto waitingItor =
+                    std::find_if(std::begin(waitingView), std::end(waitingView), [waitingView, cPlayerId](auto entity) {
+                                 return waitingView.get<PlayerComponent>(entity).Id == cPlayerId;  } );
+                if (waitingItor != std::end(waitingView))
+                {
+                    spdlog::warn(__FUNCTION__ ": player with PlayerId {:X} already has a spawn request in progress.", cPlayerId);
+                    return;            
+                }
+            }
+
             pNpc = TESNPC::Create(acMessage.AppearanceBuffer, acMessage.ChangeFlags);
             FaceGenSystem::Setup(m_world, *entity, acMessage.FaceTints);
         }
