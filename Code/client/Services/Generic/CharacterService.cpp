@@ -512,9 +512,32 @@ void CharacterService::OnRemoteSpawnDataReceived(const NotifySpawnData& acMessag
     if (!pActor)
         return;
 
-    pActor->SetActorValues(acMessage.NewActorData.InitialActorValues);
-    pActor->SetActorInventory(acMessage.NewActorData.InitialInventory);
-    m_weaponDrawUpdates[pActor->formID] = {acMessage.NewActorData.IsWeaponDrawn};
+    // Only accept spawn position and inventory updates for REMOTE Npcs.
+    // The remote system is simply not authoritative for local Npc info, and trying 
+    // to take it from the remote can result in concurrent update corruption. 
+    // This is true whether it is a local Player (and therefor remote from the
+    // Leader), or a local NPC that is with their leader or is owned instead by 
+    // the local player and their own data, possibly out-of-date, is looping
+    // back in OnRemoteSpawnDataReceived
+    // 
+    // The underlying problem, either s_pRemoveAllItems or s_unequipAll 
+    // have async behavior themselves or undocumented behavior that 
+    // causes concurrency issues.
+    if (!pActor->GetExtension()->IsRemote())
+    {
+#if TP_SKYRIM64
+        auto pNpc = Cast<TESNPC>(pActor);
+        auto pName = pNpc ? static_cast<const char*>(pNpc->fullName.value) : "";
+        spdlog::warn(__FUNCTION__ ": rejecting non-authoritative remote spawn update for local player pActor{:X}, formID{:X}, name \"{}\"",
+                     (uintptr_t)pActor, pActor->formID, pName);
+#endif
+    }
+    else
+    {
+        pActor->SetActorValues(acMessage.NewActorData.InitialActorValues);
+        pActor->SetActorInventory(acMessage.NewActorData.InitialInventory);
+        m_weaponDrawUpdates[pActor->formID] = {acMessage.NewActorData.IsWeaponDrawn};
+    }
 
     if (pActor->IsDead() != acMessage.NewActorData.IsDead)
         acMessage.NewActorData.IsDead ? pActor->Kill() : pActor->Respawn();
