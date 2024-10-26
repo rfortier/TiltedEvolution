@@ -14,8 +14,18 @@
 
 #include <World.h>
 
+#include <BSAnimationGraphManager.h>
+#include <TiltedCore/Hash.hpp>
+#include <BSCore/BSTHashMap.h>
+
+using StringBSTHashMap = creation::BSTHashMap<BSFixedString, void*>;
+using TComputeCrc64 = int64_t (*)(int64_t* outComputedCrc64, const char* value);
+
 TP_THIS_FUNCTION(TPerformAction, uint8_t, ActorMediator, TESActionData* apAction);
+TP_THIS_FUNCTION(TAccessAnimationBSTHashMap, int64_t, StringBSTHashMap, BSFixedString* apKey,
+                 volatile signed __int32** apOutUnk);
 static TPerformAction* RealPerformAction;
+static TAccessAnimationBSTHashMap* RealAccessAnimationBSTHashMap;
 
 // TODO: make scoped override
 thread_local bool g_forceAnimation = false;
@@ -107,6 +117,67 @@ bool ActorMediator::PerformAction(TESActionData* apAction) noexcept
     return res != 0;
 }
 
+// Map field offsets
+// public:
+//  uint64_t _pad00{0};    // 00
+//  uint32_t _pad08{0};    // 08
+//  uint32_t _capacity{0}; // 0C
+//  uint32_t _free{0};     // 10
+//  uint32_t _good{0};     // 14
+#pragma optimize("", off)
+int64_t TP_MAKE_THISCALL(HookAccessAnimationBSTHashMap, StringBSTHashMap, BSFixedString* apKey,
+                         volatile signed __int32** apOutUnk)
+{
+    // Setup
+    POINTER_SKYRIMSE(TComputeCrc64, crc64, 68221);
+    auto crc64fn = static_cast<TComputeCrc64>(crc64.GetPtr());
+
+    // // Hash
+    // int64_t crc64ForKey;
+    // crc64fn(&crc64ForKey, apKey->data);
+    // Map fields
+    int64_t* mapEntriesPtr = reinterpret_cast<int64_t*>((char*)apThis + 0x28);
+    uint32_t capacity = *reinterpret_cast<uint32_t*>((char*)apThis + 0x0C);
+    uint32_t free = *reinterpret_cast<uint32_t*>((char*)apThis + 0x10);
+    uint32_t good = *reinterpret_cast<uint32_t*>((char*)apThis + 0x14);
+    bool isHashMapEmpty = ((capacity - free) == 0);
+
+    //if (capacity == 0)
+    //{
+    //    spdlog::error("[!] Hash map {:X} capacity is 0 for key \"{}\". Returning 0! HashMap state: [capacity={}, free={}, good={}, empty={}, mapEntriesPtr={:X}]",
+    //                  (uintptr_t)apThis, apKey->AsAscii(), capacity, free,
+    //                  good, isHashMapEmpty ? "Yes" : "No", (uintptr_t)mapEntriesPtr);
+    //    return 0;
+    //}
+
+    if (capacity > 1024 || free > 1024 || good > 1024)
+    {
+        spdlog::error("[***] Hash map {:X} is likely CORRUPTED for key \"{}\". Returning 0! HashMap state: [capacity={}, "
+                      "free={}, good={}, empty={}, mapEntriesPtr={:X}]",
+                      (uintptr_t)apThis, apKey->AsAscii(), capacity, free,
+                      good, isHashMapEmpty ? "Yes" : "No", (uintptr_t)mapEntriesPtr);
+        //return 0;
+    }
+
+    spdlog::info("[!] Accessing \"{}\" in map {:X}. HashMap state: [capacity={}, free={}, good={}, empty={}, mapEntriesPtr={:X}]", apKey->AsAscii(),
+                 (uintptr_t)apThis, capacity, free, good, isHashMapEmpty ? "Yes" : "No", (uintptr_t)mapEntriesPtr);
+
+    // Copied code from disassembly
+    /*if (mapEntriesPtr)
+    {
+        int64_t hashKey = crc64ForKey & (uint32_t)(capacity - 1);
+        uint64_t* asd = reinterpret_cast<uint64_t*>(mapEntriesPtr + 24 * hashKey + 16);
+        spdlog::info(
+            "Accessing key \"{}\" in map {:X}, asd is {:X}. Map info: Map info: mapEntries is nullptr? {}, "
+            "capacity={}, free={}, good={}, empty={}",
+            apKey->AsAscii(), (uintptr_t)apThis, (uintptr_t)asd, mapEntriesPtr == nullptr ? "Yes" : "No",
+            capacity, free, good, isHashMapEmpty ? "Yes" : "No");
+    }*/
+
+    return RealAccessAnimationBSTHashMap(apThis, apKey, apOutUnk);
+}
+#pragma optimize("", on)
+
 bool ActorMediator::ForceAction(TESActionData* apAction) noexcept
 {
     TP_THIS_FUNCTION(TAnimationStep, uint8_t, ActorMediator, TESActionData*);
@@ -194,8 +265,17 @@ static TiltedPhoques::Initializer s_animationHook(
     {
         POINTER_FALLOUT4(TPerformAction, performAction, 502377);
         POINTER_SKYRIMSE(TPerformAction, performAction, 38949);
+#if TP_SKYRIM64
+   POINTER_SKYRIMSE(TAccessAnimationBSTHashMap, accessAnimationBSTHashMap, 27420);
+#endif
 
         RealPerformAction = performAction.Get();
+#if TP_SKYRIM64
+   RealAccessAnimationBSTHashMap = accessAnimationBSTHashMap.Get();
+#endif
 
         TP_HOOK(&RealPerformAction, HookPerformAction);
+#if TP_SKYRIM64
+   TP_HOOK(&RealAccessAnimationBSTHashMap, HookAccessAnimationBSTHashMap);
+#endif
     });
