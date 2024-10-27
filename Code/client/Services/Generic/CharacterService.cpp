@@ -127,6 +127,19 @@ bool CharacterService::TakeOwnership(const uint32_t acFormId, const uint32_t acS
         return false;
     }
 
+    auto pNpc = Cast<TESNPC>(pActor->baseForm);
+#if TP_SKYRIM64
+    const char* pName = pNpc ? static_cast<const char*>(pNpc->fullName.value) : "";
+#elif TP_FALLOUT4
+    const char* pName = pNpc ? pNpc->fullName.value.AsAscii() : "";
+#endif
+    spdlog::info(__FUNCTION__ ": pActor {:X}, formID {:X}, IsPlayer() {}, IsRemote() {}, IsPlayerSummon() {}, name \"{}\"", 
+                (uintptr_t)pActor, pActor->formID,
+                pActor->GetExtension()->IsPlayer(),
+                pActor->GetExtension()->IsRemote(), 
+                pActor->IsPlayerSummon(), 
+                pName);
+
     ActorExtension* pExtension = pActor->GetExtension();
     if (pExtension->IsRemotePlayer())
     {
@@ -141,18 +154,6 @@ bool CharacterService::TakeOwnership(const uint32_t acFormId, const uint32_t acS
         return false;
     }
 #endif
-
-    auto pNpc = Cast<TESNPC>(pActor->baseForm);
-#if TP_SKYRIM64
-    const char* pName = pNpc ? static_cast<const char*>(pNpc->fullName.value) : "";
-#elif TP_FALLOUT4
-    const char* pName = pNpc ? pNpc->fullName.value.AsAscii() : "";
-#endif
-    spdlog::info(__FUNCTION__ ": pActor {:X}, formID {:X}, serverId {:X}, IsPlayer() {}, IsRemote() {}, name \"{}\"", 
-                 (uintptr_t)pActor, pActor->formID, acServerId,
-                 pActor->GetExtension()->IsPlayer(), 
-                 pActor->GetExtension()->IsRemote(),
-                 pName);
 
     pExtension->SetRemote(false);
 
@@ -217,7 +218,7 @@ void CharacterService::OnActorAdded(const ActorAddedEvent& acEvent) noexcept
 
     if (it != std::end(view))
     {
-        Actor* pActor = Cast<Actor>(TESForm::GetById(acEvent.FormId));
+        pActor = Cast<Actor>(TESForm::GetById(acEvent.FormId));
         pActor->GetExtension()->SetRemote(true);
 
         entity = *it;
@@ -298,6 +299,8 @@ void CharacterService::OnUpdate(const UpdateEvent& acUpdateEvent) noexcept
 
 void CharacterService::OnConnected(const ConnectedEvent& acConnectedEvent) const noexcept
 {
+    spdlog::info(__FUNCTION__ ": PlayerId {:X}", acConnectedEvent.PlayerId);
+
     // Go through all the forms that were previously detected
     auto view = m_world.view<FormIdComponent>(entt::exclude<ObjectComponent>);
     Vector<entt::entity> entities(view.begin(), view.end());
@@ -321,6 +324,8 @@ void CharacterService::OnConnected(const ConnectedEvent& acConnectedEvent) const
 
 void CharacterService::OnDisconnected(const DisconnectedEvent& acDisconnectedEvent) const noexcept
 {
+    spdlog::info(__FUNCTION__ ":");
+
     auto remoteView = m_world.view<FormIdComponent, RemoteComponent>();
     for (auto entity : remoteView)
     {
@@ -420,7 +425,6 @@ void CharacterService::OnAssignCharacter(const AssignCharacterResponse& acMessag
     }
 }
 
-#pragma optimize("", off)
 void CharacterService::OnCharacterSpawn(const CharacterSpawnRequest& acMessage) const noexcept
 {
     auto remoteView = m_world.view<RemoteComponent>();
@@ -601,7 +605,7 @@ void CharacterService::OnRemoteSpawnDataReceived(const NotifySpawnData& acMessag
     if (!pActor)
         return;
 
-    auto pNpc = Cast<TESNPC>(pActor);
+    auto pNpc = Cast<TESNPC>(pActor->baseForm);
 #if TP_SKYRIM64
     const char* pName = pNpc ? static_cast<const char*>(pNpc->fullName.value) : "";
 #elif TP_FALLOUT4
@@ -739,7 +743,11 @@ void CharacterService::OnRemoveCharacter(const NotifyRemoveCharacter& acMessage)
     if (itor != std::end(view))
     {
         if (auto* pFormIdComponent = m_world.try_get<FormIdComponent>(*itor))
+        {
+            spdlog::info(__FUNCTION__ ": formID {:X}, serverID {:X}", pFormIdComponent->Id, acMessage.ServerId);
             CharacterService::DeleteTempActor(pFormIdComponent->Id);
+        }
+
 
         DeleteRemoteEntityComponents(*itor);
     }
